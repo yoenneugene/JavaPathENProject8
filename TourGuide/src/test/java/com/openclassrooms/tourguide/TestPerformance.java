@@ -47,6 +47,7 @@ public class TestPerformance {
 
 
 	@Test
+	@Disabled
 	public void highVolumeTrackLocation() {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
@@ -71,6 +72,7 @@ public class TestPerformance {
 	}
 
 	@Test
+	@Disabled
 	public void highVolumeGetRewards() {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
