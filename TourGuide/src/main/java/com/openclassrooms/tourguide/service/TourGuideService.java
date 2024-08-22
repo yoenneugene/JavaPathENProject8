@@ -15,9 +15,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -38,6 +44,8 @@ public class TourGuideService {
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
 	boolean testMode = true;
+
+
 
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
@@ -91,10 +99,32 @@ public class TourGuideService {
 	public VisitedLocation trackUserLocation(User user) {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
 		user.addToVisitedLocations(visitedLocation);
-		rewardsService.calculateRewards(user);
+//    	rewardsService.calculateRewards(user);
 		return visitedLocation;
 	}
+	public List<CompletableFuture<VisitedLocation>> trackUserLocations(List<User> users) {
+		// Crée un pool de threads avec une taille fixée
+		ExecutorService executorService = Executors.newFixedThreadPool(10);
 
+		// Liste de futures pour chaque utilisateur
+		List<CompletableFuture<VisitedLocation>> futures = users.stream()
+				.map(user -> CompletableFuture.supplyAsync(() -> {
+					// Logique synchrone d'origine pour chaque utilisateur
+					VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+					user.addToVisitedLocations(visitedLocation);
+					// rewardsService.calculateRewards(user); // Décommenter si nécessaire
+					return visitedLocation;
+				}, executorService))
+				.collect(Collectors.toList());
+
+		// Fermer le pool de threads une fois toutes les tâches terminées
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+				.whenComplete((result, exception) -> {
+					executorService.shutdown();
+				});
+
+		return futures;
+	}
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();
 		for (Attraction attraction : gpsUtil.getAttractions()) {
@@ -104,6 +134,49 @@ public class TourGuideService {
 		}
 
 		return nearbyAttractions;
+	}
+
+
+	public Map<String, Object> getClosestFiveAttractions(VisitedLocation visitedLocation, String name) {
+		List<Attraction> attractions = gpsUtil.getAttractions();
+		Location location = visitedLocation.location;
+		User user = getUser(name); // Assurez-vous que cette méthode est définie
+
+		List<AttractionDistance> closestAttractions = attractions.stream()
+				.map(attraction -> new AttractionDistance(attraction, rewardsService.getDistance(visitedLocation.location, attraction)))
+				.sorted((a1, a2) -> Double.compare(a1.distance, a2.distance))
+				.limit(5)
+				.collect(Collectors.toList());
+
+		List<Map<String, Object>> attractionsList = new ArrayList<>();
+		for (AttractionDistance attractionDistance : closestAttractions) {
+			Map<String, Object> attractionMap = new HashMap<>();
+			attractionMap.put("name", attractionDistance.attraction.attractionName);
+			attractionMap.put("attractionLat", attractionDistance.attraction.latitude);
+			attractionMap.put("attractionLong", attractionDistance.attraction.longitude);
+			attractionMap.put("userLat", location.latitude);
+			attractionMap.put("userLong", location.longitude);
+			attractionMap.put("distance", attractionDistance.distance);
+			attractionMap.put("rewardPoints", rewardsService.getRewardPoints(attractionDistance.attraction, user));
+
+			attractionsList.add(attractionMap);
+		}
+
+		Map<String, Object> result = new HashMap<>();
+		result.put("closestAttractions", attractionsList);
+
+		return result;
+	}
+
+
+	private static class AttractionDistance {
+		public final Attraction attraction;
+		public final double distance;
+
+		public AttractionDistance(Attraction attraction, double distance) {
+			this.attraction = attraction;
+			this.distance = distance;
+		}
 	}
 
 	private void addShutDownHook() {

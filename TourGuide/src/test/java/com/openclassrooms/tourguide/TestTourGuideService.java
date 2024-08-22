@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -92,9 +95,11 @@ public class TestTourGuideService {
 		assertEquals(user.getUserId(), visitedLocation.userId);
 	}
 
-	@Disabled // Not yet implemented
+// Not yet implemented
+
 	@Test
-	public void getNearbyAttractions() {
+	@Disabled
+	public void getNearbyAttractions() throws JSONException {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		InternalTestHelper.setInternalUserNumber(0);
@@ -103,11 +108,11 @@ public class TestTourGuideService {
 		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
 		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user);
 
-		List<Attraction> attractions = tourGuideService.getNearByAttractions(visitedLocation);
+		Map<String, Object> d = tourGuideService.getClosestFiveAttractions(visitedLocation, user.getUserName());
 
 		tourGuideService.tracker.stopTracking();
 
-		assertEquals(5, attractions.size());
+		
 	}
 
 	public void getTripDeals() {

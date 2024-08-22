@@ -1,6 +1,12 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.stereotype.Service;
 
@@ -22,6 +28,7 @@ public class RewardsService {
 	private int attractionProximityRange = 200;
 	private final GpsUtil gpsUtil;
 	private final RewardCentral rewardsCentral;
+	private final ReentrantLock lock = new ReentrantLock();
 	
 	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
 		this.gpsUtil = gpsUtil;
@@ -35,11 +42,11 @@ public class RewardsService {
 	public void setDefaultProximityBuffer() {
 		proximityBuffer = defaultProximityBuffer;
 	}
-	
+
 	public void calculateRewards(User user) {
-		List<VisitedLocation> userLocations = user.getVisitedLocations();
-		List<Attraction> attractions = gpsUtil.getAttractions();
-		
+		List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
+		List<Attraction> attractions = new ArrayList<>(gpsUtil.getAttractions());
+
 		for(VisitedLocation visitedLocation : userLocations) {
 			for(Attraction attraction : attractions) {
 				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
@@ -50,6 +57,28 @@ public class RewardsService {
 			}
 		}
 	}
+	public void calculateRewardsForAllUsers(List<User> users) {
+		// Créez un pool de threads pour gérer l'exécution parallèle
+		ExecutorService executorService = Executors.newFixedThreadPool(100); // Ajustez la taille du pool de threads en fonction de votre environnement
+
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+		for (User user : users) {
+			// Exécuter calculateRewards de manière asynchrone
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				calculateRewards(user);
+			}, executorService);
+
+			futures.add(future);
+		}
+
+		// Attendez que toutes les tâches soient terminées
+		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+		allOf.join();  // .join() est synchrone et attend que toutes les futures soient complétées
+
+		// Fermer le pool de threads
+		executorService.shutdown();
+	}
 	
 	public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
 		return getDistance(attraction, location) > attractionProximityRange ? false : true;
@@ -59,7 +88,7 @@ public class RewardsService {
 		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
 	}
 	
-	private int getRewardPoints(Attraction attraction, User user) {
+	int getRewardPoints(Attraction attraction, User user) {
 		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
 	}
 	
