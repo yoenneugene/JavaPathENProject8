@@ -3,7 +3,7 @@ name: Build and Test with JDK 17
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
