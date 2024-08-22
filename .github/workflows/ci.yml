@@ -1,22 +1,25 @@
-name: CI Workflow
+name: Build and Test with JDK 17
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Set up Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
           java-version: '17'
+          distribution: 'temurin'  # Utiliser Eclipse Temurin, une distribution de JDK maintenue par Adoptium
 
-      - name: Build and test
+      - name: Build with Maven
         run: mvn clean install
+
+
