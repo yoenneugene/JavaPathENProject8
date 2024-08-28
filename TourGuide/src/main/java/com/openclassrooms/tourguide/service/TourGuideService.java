@@ -138,7 +138,7 @@ public class TourGuideService {
 	public Map<String, Object> getClosestFiveAttractions(VisitedLocation visitedLocation, String name) {
 		List<Attraction> attractions = gpsUtil.getAttractions();
 		Location location = visitedLocation.location;
-		User user = getUser(name); // Assurez-vous que cette méthode est définie
+		User user = getUser(name);
 
 		List<AttractionDistance> closestAttractions = attractions.stream()
 				.map(attraction -> new AttractionDistance(attraction, rewardsService.getDistance(visitedLocation.location, attraction)))
