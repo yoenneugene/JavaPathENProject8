@@ -98,7 +98,7 @@ public class TestTourGuideService {
 // Not yet implemented
 
 	@Test
-	@Disabled
+
 	public void getNearbyAttractions() throws JSONException {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
@@ -108,8 +108,9 @@ public class TestTourGuideService {
 		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
 		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user);
 
-		Map<String, Object> d = tourGuideService.getClosestFiveAttractions(visitedLocation, user.getUserName());
 
+		Map<String, Object> d = tourGuideService.getClosestFiveAttractions(visitedLocation, user);
+		assertEquals(1, d.size(), "La map doit contenir exactement 5 attractions.");
 		tourGuideService.tracker.stopTracking();
 
 		

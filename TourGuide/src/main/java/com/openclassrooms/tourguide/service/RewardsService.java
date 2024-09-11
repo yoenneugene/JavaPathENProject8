@@ -59,7 +59,7 @@ public class RewardsService {
 	}
 	public void calculateRewardsForAllUsers(List<User> users) {
 		// Créez un pool de threads pour gérer l'exécution parallèle
-		ExecutorService executorService = Executors.newFixedThreadPool(100); // Ajustez la taille du pool de threads en fonction de votre environnement
+		ExecutorService executorService = Executors.newFixedThreadPool(100); // Ajustez la taille du pool de threads
 
 		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
